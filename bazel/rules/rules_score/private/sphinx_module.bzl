@@ -12,8 +12,6 @@
 # *******************************************************************************
 
 load("//bazel/rules/rules_score:providers.bzl", "SphinxModuleInfo", "SphinxNeedsInfo")
-load("@rules_python//sphinxdocs:sphinx_docs_library.bzl", "sphinx_docs_library")
-load("@rules_python//sphinxdocs/private:sphinx_docs_library_info.bzl", "SphinxDocsLibraryInfo")
 
 # ======================================================================================
 # Helpers
@@ -179,12 +177,6 @@ def _score_html_impl(ctx):
         if SphinxModuleInfo in dep:
             modules.extend([dep[SphinxModuleInfo].html_dir])
 
-    for t in ctx.attr.docs_library_deps:
-        info = t[SphinxDocsLibraryInfo]
-        for entry in info.transitive.to_list():
-            for original in entry.files:
-                new_path = entry.prefix + original.short_path.removeprefix(entry.strip_prefix)
-                _relocate(original, new_path)
 
     needs_external_needs_json = ctx.actions.declare_file(ctx.label.name + "/needs_external_needs.json")
 
@@ -285,9 +277,6 @@ _score_html = rule(
     implementation = _score_html_impl,
     attrs = dict(sphinx_rule_attrs,
                  strip_prefix = attr.string(doc = "Prefix to remove from input file paths."),
-                 docs_library_deps = attr.label_list(
-                     doc = "List of sphinx_docs_library targets to include as source files with prefix/strip_prefix handling.",
-                 ),
                  needs = attr.label_list(
                     allow_files = True,
                     doc = "Submodule symbols.needs targets for this module.",
@@ -304,7 +293,6 @@ def sphinx_module(
         srcs,
         index,
         deps = [],
-        docs_library_deps = [],
         sphinx = Label("//bazel/rules/rules_score:score_build"),
         strip_prefix = "",
         testonly = False,
@@ -321,7 +309,6 @@ def sphinx_module(
         index: Label to index.rst file
         config: Label to conf.py configuration file (optional, will be auto-generated if not provided)
         deps: List of other sphinx_module targets this module depends on
-        docs_library_deps: {type}`list[label]` of {obj}`sphinx_docs_library` targets.
         sphinx: Label to sphinx build binary (default: :sphinx_build)
         strip_prefix: {type}`str` A prefix to remove from the file paths of the
                     source files. e.g., given `//sphinxdocs/docs:foo.md`, stripping `docs/` makes
@@ -343,7 +330,6 @@ def sphinx_module(
         srcs = srcs,
         index = index,
         deps = deps,
-        docs_library_deps = docs_library_deps,
         needs = [d + "_needs" for d in deps],
         testonly = testonly,
         visibility = visibility,
