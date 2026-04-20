@@ -183,6 +183,7 @@ def main():
     # Parse dependencies
     dependencies = []
     for dep_spec in args.dep:
+        print("Tada a dependency: ", dep_spec)
         if ":" not in dep_spec:
             print(
                 f"Error: Invalid dependency format '{dep_spec}', expected NAME:PATH",
