@@ -213,7 +213,7 @@ register_toolchains(
 ###############################################################################
 # Dev Dependencies (for testing)
 ###############################################################################
-bazel_dep(name = "score_docs_as_code", version = "3.0.1", dev_dependency = True)
+bazel_dep(name = "score_docs_as_code", version = "3.0.1")
 
 ###############################################################################
 # Setup Googletest
