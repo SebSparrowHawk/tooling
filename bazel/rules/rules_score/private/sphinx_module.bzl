@@ -155,12 +155,27 @@ def _score_html_impl(ctx):
     source_prefix = ctx.label.name
     sphinx_source_files = []
 
+    # All srcs are relocated into a single flat directory rooted at
+    # `source_prefix/sphinx_root_prefix` so that Sphinx (whose source dir is
+    # set to dirname(index.rst)) can see every file regardless of which Bazel
+    # package it comes from.
+    index_file = ctx.attr.index.files.to_list()[0]
+    # e.g. "docs/sphinx/" — the directory that Sphinx treats as its source root.
+    sphinx_root_prefix = index_file.short_path[: -len(index_file.basename)]
+
     # Materialize a file under the `_sources` dir
     def _relocate(source_file, dest_path = None):
         if not dest_path:
-            dest_path = source_file.short_path.removeprefix(ctx.attr.strip_prefix)
+            # Strip the sphinx source root prefix when present (same-package files),
+            # otherwise fall back to just the basename so that cross-package files
+            # (e.g. score/mw/com/README.md) are placed directly in the source root.
+            short = source_file.short_path
+            if short.startswith(sphinx_root_prefix):
+                dest_path = short.removeprefix(sphinx_root_prefix)
+            else:
+                dest_path = source_file.basename
 
-        dest_path = paths.join(source_prefix, dest_path)
+        dest_path = paths.join(source_prefix, sphinx_root_prefix + dest_path)
         if source_file.is_directory:
             dest_file = ctx.actions.declare_directory(dest_path)
         else:
