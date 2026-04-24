@@ -55,7 +55,7 @@ dependable_element(
     integrity_level = "D",
     requirements = [],
     tests = [],
-    visibility = ["//:__subpackages__"],
+    visibility = ["//visibility:public"],
 )
 
 cc_library(

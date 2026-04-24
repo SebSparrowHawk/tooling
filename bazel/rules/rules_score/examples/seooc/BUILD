@@ -62,4 +62,5 @@ dependable_element(
     ],
     tests = [],
     deps = ["//bazel/rules/rules_score/examples/some_other_library:other_seooc"],
+    visibility = ["//visibility:public"],
 )
