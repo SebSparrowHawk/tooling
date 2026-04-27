@@ -113,6 +113,18 @@ def _score_html_impl(ctx):
     Phase 2: Generate HTML with external needs and merge all dependency HTML
     """
 
+    run_args = []  # Copy of the args to forward along to debug runner
+    args = ctx.actions.args()  # Args passed to the action
+
+    # Expand location references in extra_opts and collect as sphinx arguments.
+    # targets must include all labels referenced via $(location ...) / $(execpaths ...).
+    extra_opts_targets = ctx.attr.srcs + ctx.attr.docs_library_deps
+    for opt in ctx.attr.extra_opts:
+        expanded = ctx.expand_location(opt, targets = extra_opts_targets)
+        print("???????? expanded opts location: ", expanded)
+        args.add(expanded)
+        run_args.append(expanded)
+
     # Collect all transitive dependencies with deduplication
     modules = []
     sphinx_toolchain = ctx.toolchains["//bazel/rules/rules_score:toolchain_type"].sphinxinfo
@@ -136,18 +148,6 @@ def _score_html_impl(ctx):
     ctx.actions.write(
         output = needs_external_needs_json,
         content = json.encode_indent(needs_external_needs, indent = "  "),
-    )
-
-    # Read template and substitute PROJECT_NAME
-    config_file = ctx.actions.declare_file(ctx.label.name + "/conf.py")
-    template = sphinx_toolchain.conf_template.files.to_list()[0]
-
-    ctx.actions.expand_template(
-        template = template,
-        output = config_file,
-        substitutions = {
-            "{PROJECT_NAME}": ctx.label.name.replace("_", " ").title(),
-        },
     )
 
     source_prefix = ctx.label.name
@@ -182,13 +182,6 @@ def _score_html_impl(ctx):
                 new_path = entry.prefix + original.short_path.removeprefix(entry.strip_prefix)
                 _relocate(original, new_path)
 
-    needs_external_needs_json = ctx.actions.declare_file(ctx.label.name + "/needs_external_needs.json")
-
-    ctx.actions.write(
-        output = needs_external_needs_json,
-        content = json.encode_indent(needs_external_needs, indent = "  "),
-    )
-
     config_file = _create_config_py(ctx)
 
     # Sphinx only accepts a single directory to read its doc sources from.
@@ -219,7 +212,7 @@ def _score_html_impl(ctx):
     ctx.actions.run(
         inputs = html_inputs,
         outputs = [sphinx_html_output],
-        arguments = html_args,
+        arguments = html_args + [args],
         progress_message = "Building HTML: %s" % ctx.label.name,
         executable = sphinx_toolchain.sphinx.files_to_run.executable,
         tools = [
@@ -287,6 +280,10 @@ _score_html = rule(
             allow_files = True,
             doc = "Submodule symbols.needs targets for this module.",
         ),
+        extra_opts = attr.string_list(
+                    doc = "Additional options to pass onto Sphinx. These are added after " +
+                          "other options, but before the source/output args.",
+        ),
     ),
     toolchains = ["//bazel/rules/rules_score:toolchain_type"],
 )
@@ -303,6 +300,7 @@ def sphinx_module(
         docs_library_deps = [],
         sphinx = Label("//bazel/rules/rules_score:score_build"),
         strip_prefix = "",
+        extra_opts = [],
         testonly = False,
         visibility = ["//visibility:public"]):
     """Build a Sphinx module with transitive HTML dependencies.
@@ -323,6 +321,9 @@ def sphinx_module(
                     source files. e.g., given `//sphinxdocs/docs:foo.md`, stripping `docs/` makes
                     Sphinx see `foo.md` in its generated source directory. If not
                     specified, then {any}`native.package_name` is used.
+        extra_opts: {type}`list[str]` Additional options to pass onto Sphinx building.
+                    On each provided option, a location expansion is performed.
+                    See {any}`ctx.expand_location`.
         visibility: Bazel visibility
     """
     _score_needs(
@@ -341,6 +342,7 @@ def sphinx_module(
         deps = deps,
         docs_library_deps = docs_library_deps,
         needs = [d + "_needs" for d in deps],
+        extra_opts = extra_opts,
         testonly = testonly,
         visibility = visibility,
     )

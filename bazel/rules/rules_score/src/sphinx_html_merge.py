@@ -178,6 +178,11 @@ def main():
         help="Dependency HTML directory in format NAME:PATH",
     )
 
+    parser.add_argument(
+        "-Dbreathe_projects",
+        help="Override Breathe projects mapping (e.g., -Dbreathe_projects='{\"com\": \"path/to/xml\"}')",
+    )
+
     args = parser.parse_args()
 
     # Parse dependencies
