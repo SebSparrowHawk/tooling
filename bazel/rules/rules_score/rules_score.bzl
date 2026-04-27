@@ -48,6 +48,7 @@ load(
 )
 load(
     "//bazel/rules/rules_score/private:sphinx_module.bzl",
+    _filter_execpath = "filter_execpath",
     _sphinx_module = "sphinx_module",
 )
 load(
@@ -65,6 +66,7 @@ component_requirements = _component_requirements
 dependability_analysis = _dependability_analysis
 feature_requirements = _feature_requirements
 fmea = _fmea
+filter_execpath = _filter_execpath
 sphinx_module = _sphinx_module
 unit = _unit
 unit_design = _unit_design
